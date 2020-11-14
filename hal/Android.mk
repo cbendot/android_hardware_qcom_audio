@@ -227,6 +227,12 @@ LOCAL_HEADER_LIBRARIES += audio_qaf_headers
 LOCAL_SHARED_LIBRARIES += libqap_wrapper liblog
 endif
 
+# Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 start
+    LOCAL_CFLAGS += -DTFA98XX_ENABLED
+    LOCAL_SRC_FILES += audio_extn/tfa98xx_feedback.c
+# Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 end
+
+
 ifeq ($(strip $(AUDIO_FEATURE_ENABLED_LISTEN)),true)
     LOCAL_CFLAGS += -DAUDIO_LISTEN_ENABLED
     LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/audio-listen

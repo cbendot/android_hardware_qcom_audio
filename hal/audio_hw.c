@@ -37,8 +37,8 @@
 
 #define LOG_TAG "audio_hw_primary"
 #define ATRACE_TAG (ATRACE_TAG_AUDIO|ATRACE_TAG_HAL)
-/*#define LOG_NDEBUG 0*/
-/*#define VERY_VERY_VERBOSE_LOGGING*/
+//#define LOG_NDEBUG 0
+//#define VERY_VERY_VERBOSE_LOGGING
 #ifdef VERY_VERY_VERBOSE_LOGGING
 #define ALOGVV ALOGV
 #else
@@ -1336,7 +1336,9 @@ int enable_snd_device(struct audio_device *adev,
         audio_extn_dev_arbi_acquire(snd_device);
         amplifier_enable_devices(snd_device, true);
         audio_route_apply_and_update_path(adev->audio_route, device_name);
-
+		/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 start */
+		audio_extn_tfa98xx_start_feedback(adev, snd_device);
+		/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 end */
         if (SND_DEVICE_OUT_HEADPHONES == snd_device &&
             !adev->native_playback_enabled &&
             audio_is_true_native_stream_active(adev)) {
@@ -1406,6 +1408,9 @@ int disable_snd_device(struct audio_device *adev,
             }
             platform_set_speaker_gain_in_combo(adev, snd_device, false);
         } else {
+			/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 start */
+            audio_extn_tfa98xx_stop_feedback(adev, snd_device);
+			/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 end */
             audio_route_reset_and_update_path(adev->audio_route, device_name);
             amplifier_enable_devices(snd_device, false);
         }
@@ -9014,7 +9019,11 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
                 config->sample_rate == 32000 ||
                 config->sample_rate == 48000) &&
                channel_count == 1) {
-        in->usecase = USECASE_AUDIO_RECORD_VOIP;
+        if (voice_extn_is_compress_voip_supported()) {
+            in->usecase = USECASE_COMPRESS_VOIP_CALL;
+        } else {
+            in->usecase = USECASE_AUDIO_RECORD;
+        }
         in->config = pcm_config_audio_capture;
         frame_size = audio_stream_in_frame_size(&in->stream);
         buffer_size = get_stream_buffer_size(VOIP_CAPTURE_PERIOD_DURATION_MSEC,

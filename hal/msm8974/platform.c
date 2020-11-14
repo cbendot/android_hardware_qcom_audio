@@ -19,7 +19,6 @@
 
 #define LOG_TAG "msm8974_platform"
 //#define LOG_NDEBUG 0
-#define LOG_NDDEBUG 0
 /*#define VERY_VERY_VERBOSE_LOGGING*/
 #ifdef VERY_VERY_VERBOSE_LOGGING
 #define ALOGVV ALOGV
@@ -46,7 +45,9 @@
 #include "sound/compress_params.h"
 #include "sound/msmcal-hwdep.h"
 #include <dirent.h>
-
+//Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 start
+#include <cutils/properties.h>
+//Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 end
 #ifdef DYNAMIC_LOG_ENABLED
 #include <log_xml_parser.h>
 #define LOG_MASK HAL_MOD_FILE_PLATFORM
@@ -182,7 +183,16 @@
 #define MAX_CAL_NAME 20
 #define MAX_MIME_TYPE_LENGTH 30
 #define MAX_SND_CARD_NAME_LENGTH 100
+//Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 start
+#define AUDIO_PARAMETER_KEY_MIC_CHOOSE "SET_MIC_CHOOSE"
+const char factory_key[] = "ro.hq.build.factory";
+//add by zhangmeilong at 2019/09/11 for bug 1338474 smmi test boardMictest fail
+const char smmi_key[] = "persist.asus.smmi.mic";
+//Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 end
 
+//huaqin add for enhance google record recognize by xudayi at 2018/05/03 start
+#define AUDIO_PARAMETER_KEY_MIC_GOOGLE "SET_GOOGLE"
+//huaqin add for enhance google record recognize by xudayi at 2018/05/03 end
 #define GET_IN_DEVICE_INDEX(SND_DEVICE) ((SND_DEVICE) - (SND_DEVICE_IN_BEGIN))
 
 #ifdef DYNAMIC_LOG_ENABLED
@@ -2834,8 +2844,8 @@ static int init_be_dai_name_table(struct audio_device *adev)
         valid_hw_interface = false;
 
         if (hw_interface_table[i] == NULL) {
-            ALOGW("%s: sound device %s has no hw interface set\n",
-                  __func__, platform_get_snd_device_name(i));
+            /*ALOGW("%s: sound device %s has no hw interface set\n",
+                  __func__, platform_get_snd_device_name(i));*/
             continue;
         }
 
@@ -2846,9 +2856,9 @@ static int init_be_dai_name_table(struct audio_device *adev)
                 break;
             }
         }
-        if (!valid_hw_interface)
-            ALOGD("%s: sound device %s does not have a valid hw interface set (disregard for combo devices) %s\n",
-                   __func__, platform_get_snd_device_name(i), hw_interface_table[i]);
+        /*if (!valid_hw_interface)
+          ALOGD("%s: sound device %s does not have a valid hw interface set (disregard for combo devices) %s\n",
+                   __func__, platform_get_snd_device_name(i), hw_interface_table[i]);*/
     }
 
     goto done;
@@ -4426,8 +4436,8 @@ static int find_index(struct name_to_index * table, int32_t len, const char * na
             goto done;
         }
     }
-    ALOGE("%s: Could not find index for name = %s",
-            __func__, name);
+    /*ALOGE("%s: Could not find index for name = %s",
+            __func__, name);*/
     ret = -ENODEV;
 done:
     return ret;
@@ -6363,6 +6373,30 @@ snd_device_t platform_get_input_snd_device(void *platform,
 
     ALOGV("%s: enter: out_device(%#x) in_device(%#x) channel_count (%d) channel_mask (0x%x)",
           __func__, out_device, in_device, channel_count, channel_mask);
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 start
+    char factory_val[PROPERTY_VALUE_MAX] = {0};
+    property_get(factory_key,factory_val,"0");
+    //modify start by zhangmeilong at 2019/09/11 for bug 1338474 smmi test boardMictest fail
+    char smmi_val[PROPERTY_VALUE_MAX] = {0};
+    property_get(smmi_key,smmi_val,"0");
+    if (!strcmp(factory_val,"1") || !strcmp(smmi_val,"1"))
+    //modify end by zhangmeilong at 2019/09/11 for bug 1338474 smmi test boardMictest fail
+      {
+        ALOGD("%s: mic_choose init: %d",__func__,my_data->mic_choose);
+        if (my_data->mic_choose == 1) {//main mic
+              snd_device = SND_DEVICE_IN_HANDSET_MIC;
+           } else if (my_data->mic_choose == 2){//sub mic
+              snd_device = SND_DEVICE_IN_SPEAKER_MIC;
+           } else {
+              snd_device = SND_DEVICE_NONE;
+           }
+
+         if (snd_device != SND_DEVICE_NONE) {
+              goto exit;
+           }
+   }
+
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 end
     if (my_data->external_mic) {
         if ((out_device != AUDIO_DEVICE_NONE) && ((mode == AUDIO_MODE_IN_CALL) ||
             voice_check_voicecall_usecases_active(adev) ||
@@ -6688,8 +6722,16 @@ snd_device_t platform_get_input_snd_device(void *platform,
                     (my_data->source_mic_type & SOURCE_DUAL_MIC)) {
                     if (in != NULL && in->enable_aec)
                         snd_device = SND_DEVICE_IN_HANDSET_DMIC_AEC;
-                    else
-                        snd_device = SND_DEVICE_IN_VOICE_REC_DMIC_FLUENCE;
+                    // Modify by AMT.meng.lv, 05/11/2020, "Fully optimize VOIP call issues" begin
+                    else {
+                        snd_device = SND_DEVICE_IN_VOICE_REC_DMIC_STEREO;
+                    }
+                    // Modify by AMT.meng.lv, 05/11/2020, "Fully optimize VOIP call issues" end
+                    //huaqin add for enhance google record recognize by xudayi at 2018/05/03 start
+                    if (my_data->google_choose == 1) {
+                         snd_device = SND_DEVICE_IN_HANDSET_DMIC_STEREO;
+                    }
+                    //huaqin add for enhance google record recognize by xudayi at 2018/05/03 end
                 }
                 in->enable_ec_port = true;
             } else if (((channel_mask == AUDIO_CHANNEL_IN_FRONT_BACK) ||
@@ -7477,7 +7519,47 @@ int platform_set_parameters(void *platform, struct str_parms *parms)
         if (ret)
             ALOGE("%s: Failed to set slow talk err: %d", __func__, ret);
     }
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 start
+    char factory_val[PROPERTY_VALUE_MAX] = {0};
+    property_get(factory_key,factory_val,"0");
+    //modify start by zhangmeilong at 2019/09/11 for bug 1338474 smmi test boardMictest fail
+    char smmi_val[PROPERTY_VALUE_MAX] = {0};
+    property_get(smmi_key,smmi_val,"0");
+    if (!strcmp(factory_val,"1") || !strcmp(smmi_val,"1"))
+    //modify end by zhangmeilong at 2019/09/11 for bug 1338474 smmi test boardMictest fail
+    {
+        int mic_ret;
+        mic_ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_MIC_CHOOSE, value, sizeof(value));
+        ALOGD("%s:mic_ret: %d", __func__ , mic_ret);
+        if (mic_ret >= 0) {
+            if ('1' == value[0]) {
+                my_data->mic_choose = 1;
+            } else if ('2' == value[0]) {
+                my_data->mic_choose = 2;
+            } else {
+                my_data->mic_choose = 0;
+            }
+            ALOGD("%s:mic_choose set:%d", __func__, my_data->mic_choose);
+            str_parms_del(parms, AUDIO_PARAMETER_KEY_MIC_CHOOSE);
+        }
+  }
 
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 end
+
+	//huaqin add for enhance google record recognize by xudayi at 2018/05/03 start
+	int google_ret;
+	google_ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_MIC_GOOGLE, value, sizeof(value));
+	ALOGD("%s:google_ret: %d", __func__ , google_ret);
+	if (google_ret >= 0) {
+		if ('1' == value[0]) {
+			my_data->google_choose = 1;
+		} else {
+			my_data->google_choose = 0;
+		}
+		ALOGD("%s:google_choose set:%d", __func__, my_data->google_choose);
+		str_parms_del(parms, AUDIO_PARAMETER_KEY_MIC_GOOGLE);
+	}
+	//huaqin add for enhance google record recognize by xudayi at 2018/05/03 end
     err = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_HD_VOICE, value, len);
     if (err >= 0) {
         bool state = false;
@@ -9194,10 +9276,10 @@ int platform_set_snd_device_backend(snd_device_t device, const char *backend_tag
         goto done;
     }
 
-    ALOGD("%s: backend_tag_table[%s]: old = %s new = %s", __func__,
+    /*ALOGD("%s: backend_tag_table[%s]: old = %s new = %s", __func__,
           platform_get_snd_device_name(device),
           backend_tag_table[device] != NULL ? backend_tag_table[device]: "null",
-          backend_tag);
+          backend_tag);*/
 
     if (backend_tag != NULL ) {
         if (backend_tag_table[device]) {
@@ -9210,7 +9292,7 @@ int platform_set_snd_device_backend(snd_device_t device, const char *backend_tag
         if (hw_interface_table[device])
             free(hw_interface_table[device]);
 
-        ALOGD("%s: hw_interface_table[%d] = %s", __func__, device, hw_interface);
+        /*ALOGD("%s: hw_interface_table[%d] = %s", __func__, device, hw_interface);*/
         hw_interface_table[device] = strdup(hw_interface);
     }
 done:
