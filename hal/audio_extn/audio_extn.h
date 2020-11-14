@@ -887,7 +887,19 @@ void audio_extn_perf_lock_acquire(int *handle, int duration,
                                  int *opts, int size);
 void audio_extn_perf_lock_release(int *handle);
 
+/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 start */
+#ifndef TFA98XX_ENABLED
 
+#define audio_extn_tfa98xx_start_feedback(adev, snd_device)    (0)
+#define audio_extn_tfa98xx_stop_feedback(adev, snd_device)     (0)
+
+#else
+int audio_extn_tfa98xx_start_feedback(struct audio_device *adev,
+		snd_device_t snd_device);
+void audio_extn_tfa98xx_stop_feedback(struct audio_device *adev,
+		snd_device_t snd_device);
+#endif /*TFA98XX_ENABLED*/
+/* Huaqin add for open nxp pa feedback funtion by xudayi at 2018/03/03 end */
 
 #ifndef AUDIO_EXTERNAL_HDMI_ENABLED
 #define audio_utils_set_hdmi_channel_status(out, buffer, bytes) (0)
