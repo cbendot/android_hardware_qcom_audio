@@ -300,6 +300,12 @@ struct platform_data {
     bool fluence_sb_enabled;
     int  fluence_type;
     int  fluence_mode;
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 start
+    int mic_choose;
+    //Huaqin add for add test main sub mic spk by lvzheng at 2018/2/2 end
+    //huaqin add for enhance google record recognize by xudayi at 2018/05/03 start
+    int google_choose;
+    //huaqin add for enhance google record recognize by xudayi at 2018/05/03 end
     char fluence_cap[PROPERTY_VALUE_MAX];
     bool ambisonic_capture;
     bool ambisonic_profile;
